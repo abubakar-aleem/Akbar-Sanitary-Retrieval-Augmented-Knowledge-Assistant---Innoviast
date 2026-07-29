@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akbar & Sons Knowledge Assistant — RAG Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Raleway:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --navy: #0a1940;
+    --navy-2: #1a2a4a;
+    --navy-line: #1a3a6e;
+    --gold: #c9a84c;
+    --gold-light: #f0d080;
+    --bg: #f5f7fc;
+    --card: #ffffff;
+    --border: #dce3ef;
+    --text: #1a2a4a;
+    --text-dim: #6b7a99;
+    --danger: #b3651b;
+    --success: #2f7a4f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Raleway', sans-serif;
+    min-height:100vh;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:var(--navy);
+    border-bottom:3px solid var(--gold);
+    padding:16px 24px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .crest{
+    width:42px; height:42px;
+    border-radius:50%;
+    border:2px solid var(--gold);
+    background:var(--navy-2);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Cinzel', serif; font-weight:700;
+    color:var(--gold-light); font-size:15px; flex-shrink:0;
+  }
+  h1{
+    color:var(--gold-light);
+    font-family:'Cinzel', serif;
+    font-weight:600;
+    font-size:24px;
+    margin:0;
+  }
+  .subtitle{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--gold-light);
+    opacity:0.85;
+  }
+  .mark{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--gold-light);
+    border:1px solid var(--gold);
+    padding:3px 8px;
+    border-radius:3px;
+  }
+
+  .wrap{max-width:1000px; margin:0 auto; padding:24px 20px 80px;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .card h2{
+    font-family:'Cinzel', serif;
+    font-size:17px;
+    margin:0 0 4px;
+    color:var(--navy);
+  }
+  .card .desc{
+    color:var(--text-dim);
+    font-size:12.5px;
+    margin:0 0 14px;
+  }
+
+  input[type=text], input[type=password]{
+    width:100%;
+    background:#fffdf5;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:10px 12px;
+    font-family:'Raleway', sans-serif;
+    font-size:14px;
+    color:var(--text);
+  }
+  input:focus{outline:none; border-color:var(--gold);}
+
+  .btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    border-radius:4px;
+    border:1px solid var(--gold);
+    background:#fffdf5;
+    color:var(--navy);
+    padding:10px 18px;
+    cursor:pointer;
+    transition:all .15s;
+  }
+  .btn:hover{background:var(--gold-light);}
+  .btn-primary{background:var(--gold); color:var(--navy); font-weight:600;}
+  .btn-primary:hover{background:var(--gold-light);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn:disabled:hover{background:#fffdf5;}
+
+  .key-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .key-row input{flex:1; min-width:200px;}
+
+  .status-row{
+    display:flex; align-items:center; gap:10px;
+    margin-top:12px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+  }
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex-shrink:0;}
+  .dot.ready{background:var(--success);}
+  .dot.busy{background:var(--gold); animation:pulse 1s infinite;}
+  @keyframes pulse{ 50%{opacity:0.3;} }
+  .progress-bar{
+    height:6px; background:var(--border); border-radius:3px; overflow:hidden;
+    margin-top:8px; display:none;
+  }
+  .progress-bar.show{display:block;}
+  .progress-fill{height:100%; background:var(--gold); width:0%; transition:width .2s;}
+
+  .chat-window{
+    background:#fffdf5;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:16px;
+    min-height:280px;
+    max-height:480px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .msg{max-width:85%;}
+  .msg.user{align-self:flex-end;}
+  .msg.bot{align-self:flex-start;}
+  .bubble{
+    padding:12px 14px;
+    border-radius:10px;
+    font-size:14px;
+    line-height:1.55;
+    white-space:pre-wrap;
+  }
+  .msg.user .bubble{background:var(--navy); color:#fff; border-bottom-right-radius:2px;}
+  .msg.bot .bubble{background:#fff; border:1px solid var(--border); border-bottom-left-radius:2px;}
+  .msg.bot .bubble.fallback{border-color:var(--danger); background:#fff6ee;}
+  .sources{
+    margin-top:8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--gold);
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .source-tag{
+    border:1px solid var(--gold);
+    padding:2px 8px;
+    border-radius:10px;
+    background:#fffaf0;
+  }
+  .empty-chat{
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    text-align:center;
+    margin:auto;
+  }
+
+  .input-row{display:flex; gap:10px; margin-top:14px;}
+  .input-row input{flex:1;}
+
+  .quick-qs{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .qchip{
+    font-family:'Raleway', sans-serif;
+    font-size:12px;
+    border:1px solid var(--gold);
+    color:var(--navy);
+    background:#fffdf5;
+    padding:6px 12px;
+    border-radius:16px;
+    cursor:pointer;
+  }
+  .qchip:hover{background:var(--gold-light);}
+
+  details{margin-top:8px;}
+  summary{
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-dim);
+  }
+  .kb-list{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
+    gap:6px;
+  }
+  .kb-item{
+    font-size:11.5px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:6px 8px;
+    color:var(--text-dim);
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--gold);
+    color:var(--navy);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px; font-weight:600;
+    padding:10px 20px; border-radius:4px;
+    opacity:0; pointer-events:none;
+    transition:all .25s; z-index:50;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.error{background:var(--danger); color:#fff;}
+
+  .dropzone{
+    border:1.5px dashed var(--gold);
+    border-radius:6px;
+    padding:22px;
+    text-align:center;
+    background:#fffdf5;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{background:var(--gold-light);}
+  .dropzone .dz-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--navy);
+    font-weight:600;
+  }
+  .dropzone .dz-sub{
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:4px;
+  }
+  #pdf-file-input{display:none;}
+  .upload-status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-top:10px;
+    min-height:14px;
+  }
+  .doc-list{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .doc-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:7px 10px;
+    color:var(--text);
+  }
+  .doc-item .chunks{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--gold);
+  }
+  .doc-item .remove-doc{
+    cursor:pointer;
+    color:var(--danger);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    margin-left:10px;
+  }
+  .stale-note{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--danger);
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="crest">A&S</div>
+    <div>
+      <h1>Akbar & Sons Knowledge Assistant</h1>
+      <div class="subtitle">Retrieval-Augmented Knowledge Assistant — InnoViast Week 4</div>
+    </div>
+  </div>
+  <span class="mark">● RAG Prototype</span>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>1. Connect</h2>
+    <p class="desc">Enter your Gemini API key. It's stored only in your browser's local storage — never sent anywhere except Google's API.</p>
+    <div class="key-row">
+      <input type="password" id="api-key" placeholder="Paste your Gemini API key">
+      <button class="btn" onclick="saveKey()">Save Key</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Add Your Own Documents</h2>
+    <p class="desc">Upload PDF catalogues, price sheets, or manuals. Text is extracted and split into chunks right in your browser, then added to the knowledge base alongside the built-in catalogue below.</p>
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('pdf-file-input').click()">
+      <div class="dz-title">Click to choose PDF file(s)</div>
+      <div class="dz-sub">or drag and drop here — nothing is uploaded to a server, all extraction happens locally</div>
+    </div>
+    <input type="file" id="pdf-file-input" accept="application/pdf" multiple>
+    <div class="upload-status" id="upload-status"></div>
+    <div class="doc-list" id="doc-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Build Knowledge Base</h2>
+    <p class="desc">Embeds the built-in catalogue sections plus any uploaded documents into vectors for retrieval. Re-run this any time you add or remove a document — cached in your browser otherwise.</p>
+    <button class="btn btn-primary" id="init-btn" onclick="buildKnowledgeBase()">Initialize Knowledge Base</button>
+    <div class="status-row">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Not initialized</span>
+    </div>
+    <div class="progress-bar" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <details>
+      <summary id="kb-summary">View knowledge base sections</summary>
+      <div class="kb-list" id="kb-list"></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>4. Ask a Question</h2>
+    <p class="desc">Answers are generated only from the catalogue above. If it's not in the knowledge base, the assistant will say so instead of guessing.</p>
+
+    <div class="chat-window" id="chat-window">
+      <div class="empty-chat">Initialize the knowledge base above, then ask a question about our products, brands, sizes, or store info.</div>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="question-input" placeholder="e.g. Which brands sell PPRC pipes?" disabled>
+      <button class="btn btn-primary" id="ask-btn" onclick="askQuestion()" disabled>Ask</button>
+    </div>
+
+    <div class="quick-qs">
+      <span class="qchip" onclick="quickAsk('Which brands sell PVC pipes?')">Which brands sell PVC pipes?</span>
+      <span class="qchip" onclick="quickAsk('What sizes of water tanks do you have?')">Water tank sizes?</span>
+      <span class="qchip" onclick="quickAsk('Do you sell electrical wire?')">Do you sell electrical wire?</span>
+      <span class="qchip" onclick="quickAsk('What are your business hours and address?')">Business hours & address?</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- KNOWLEDGE BASE ----------
+const KB = [
+  { id:'store-info', title:'Store Information', text:
+    "Akbar & Sons Sanitary Store, owned by M Aleem, is located on Main Defence Ghazi Road, near Jamia Masjid Siddiqia, Lahore. Phone/WhatsApp: 0321-1306560. Business hours: 9:00 AM to 9:00 PM. Delivery is available, and the store offers bulk supply for builders, contractors, and construction projects." },
+
+  { id:'upvc-pipes', title:'UPVC (PVC) Pipes & Fittings', text:
+    "UPVC Pipes and Fittings from Popular, TurkPlast, and Dura Flow are suitable for sewage, drainage, and waste-water systems for residential, commercial, and industrial projects. Brands available: Popular, TurkPlast, Dura Flow. Products: UPVC Pipes, UPVC Fittings. Sizes: 1.25in, 1.5in, 2in, 3in, 4in, 5in, 6in, 8in. Color: White. Warranty: Lifetime Guarantee. Features: durable construction, corrosion-resistant, leak-resistant joints, smooth inner surface for better flow, low maintenance, long service life." },
+
+  { id:'pprc-pipes', title:'PPRC Pipes & Fittings', text:
+    "PPRC Pipes and Fittings are used for hot and cold water supply systems in residential, commercial, and industrial projects. Brands available: Popular, TurkPlast, Dura Flow, IIL. Products: PPRC Pipes, PPRC Fittings. Sizes: 25mm, 32mm, 40mm, 50mm, 63mm. Color: Green. Warranty: Lifetime Guarantee. Features: suitable for hot and cold water, rust-free material, corrosion-resistant, hygienic water supply solution, leak-resistant joints, pressure-resistant, long service life." },
+
+  { id:'sewerage-pipes', title:'Sewerage Pipes & Fittings', text:
+    "Sewerage Pipes and Fittings are used for drainage, sewage, and waste-water systems. Brands available: Popular, TurkPlast, Dura Flow. Products: Sewerage Pipes, Sewerage Fittings. Sizes: 1.25in, 1.5in, 2in, 3in, 4in, 5in, 6in, 8in. Color: White. Warranty: Lifetime Guarantee. Features: durable construction, chemical-resistant, smooth flow surface, leak-resistant connections, suitable for underground drainage, low maintenance." },
+
+  { id:'water-tanks', title:'Water Tanks', text:
+    "Double-ply water tanks from Suntuff and Dura Flow for residential, commercial, and industrial water storage. Brands available: Suntuff, Dura Flow. Capacities: 150, 200, 250, 300, 400, 500, 750, 1200 Gallon. Color: Blue. Construction: Double Ply. Warranty: Suntuff 10 Years, Dura Flow 5 Years. Features: double-ply construction, UV-resistant material, food-grade material, leak-proof design, weather-resistant, durable and long-lasting, suitable for outdoor installation." },
+
+  { id:'check-valves', title:'Check Valves', text:
+    "Check valves allow water flow in one direction and prevent reverse flow in plumbing and water supply systems. Brands available: Roma, TFE. Sizes: 0.5in, 0.75in, 1in, 1.25in, 1.5in, 2in, 3in. Features: prevents backflow, protects pumps and pipelines, reliable performance, suitable for residential and commercial plumbing." },
+
+  { id:'handle-valves', title:'Handle Valves', text:
+    "Handle valves are used to control water flow in plumbing systems. Brands available: Faisal, SS, Dura, Sparco, Kitz. Sizes: 0.5in, 0.75in, 1in, 1.25in, 1.5in, 2in, 3in. Material: Brass (most brands), Stainless Steel (SS brand). Features: easy flow control, durable construction, reliable operation, available in brass and steel options." },
+
+  { id:'no-return-valves', title:'No Return Valves', text:
+    "No Return Valves prevent water from flowing backward and help protect pumps and water supply systems. Brands available: RBS, TFE. Sizes: 0.5in, 0.75in, 1in, 1.25in, 1.5in, 2in, 3in. Features: one-way water flow control, prevents reverse flow, durable performance." },
+
+  { id:'faucets-mixers', title:'Faucets & Mixers', text:
+    "Faucets and mixers suitable for bathrooms, kitchens, residential, and commercial installations. Brands available: Faisal, JIJ, Super Master, Super Asia. Products: Water Taps, T-Cocks, Basin Taps, Kitchen Taps, Shower Mixers, Bathroom Faucets. Material and Finish: Brass Body, Chrome Polish Finish. Warranty: Leakage Guarantee. Features: premium brass construction, chrome polish finish, corrosion-resistant surface, smooth water flow, durable internal mechanism, modern designs." },
+
+  { id:'sanitary-ware', title:'Sanitary Ware', text:
+    "Complete sanitary ware solutions for modern bathrooms, residential projects, and commercial installations. Brands available: Super Master, Polo, Capital, Dura Flow, Look Master. Commodes: Super Master, Polo. Wash Basins: Capital. Flush Tanks: Dura Flow. Flushes: Polo, Look Master. Features: durable sanitary products, modern designs, easy-to-clean surfaces, reliable flushing systems, suitable for renovation and new construction." },
+
+  { id:'kitchen-sinks', title:'Kitchen Sinks', text:
+    "Brand available: Allied. Product categories: Single Bowl Round Sink, Single Bowl Square Sink, Double Bowl Square Sink, Handmade Sink, Handmade Double Bowl Sink. Material and Finish: Stainless Steel (SS), Chrome Color Finish. Handmade sinks made in China. Round Sink Sizes: 13x16, 14x17, 15x19. Square Sink Sizes: 17x20, 18x22. Handmade Single Bowl Sizes: 50x40, 55x40, 60x45, 68x45. Handmade Double Bowl Size: 82x45. Features: stainless steel construction, rust-resistant surface, modern designs, easy cleaning, durable for daily kitchen use." },
+
+  { id:'water-pumps', title:'Water Pumps / Motors', text:
+    "Water pumps and motors suitable for residential, commercial, and general water supply applications. Brands available: Shahzad, Double Sher, Universal. Products: EBS Pumps, Vacuum Pumps, Monoblock Pumps. Material: Copper Winding. Warranty: 3 Months. Features: copper winding for efficiency, strong motor performance, reliable operation, durable construction, easy maintenance." },
+
+  { id:'garden-pipes', title:'Garden Pipes', text:
+    "Brands available: Dura Flow, Popular, Terbela. Sizes: 0.5in, 0.75in, 1in, 1.25in, 1.5in. Features: flexible and durable, suitable for gardening and water supply, easy handling, long service life." },
+
+  { id:'suction-pipes', title:'Suction Steel Wire Garden Pipes', text:
+    "Brand available: Vital. Sizes: 0.75in, 1in, 1.25in, 1.5in. Features: steel wire reinforced structure, high pressure resistance, suitable for suction pumps, flexible and durable." },
+
+  { id:'gi-pipes', title:'GI Pipes & Fittings', text:
+    "Brand available: IIL. Products: GI Pipes, GI Fittings. Sizes: 0.5in, 0.75in, 1in, 1.25in, 1.5in, 2in. Quality: Premium Quality. Warranty: None. Features: strong galvanized iron construction, high durability, suitable for water supply systems, reliable for pressure applications." },
+
+  { id:'bathroom-showers', title:'Bathroom Showers', text:
+    "Bathroom shower fittings for modern bathrooms, renovations, and new construction projects. Products: Toilet Showers, Hand Showers, Rain Showers, Wall Shower Sets, Other Shower Accessories. Toilet Shower Brands: Faisal, Decent Master, Winner. Features: durable construction, smooth water flow, modern designs, easy installation, suitable for residential and commercial bathrooms, long-lasting performance." },
+
+  { id:'floor-waste', title:'Floor Waste / Drains', text:
+    "Floor waste drains are used for efficient bathroom and floor drainage systems to remove wastewater and prevent water accumulation. Brand available: Lake. Materials: Genuine Stainless Steel (SS), Plastic (different companies). Sizes: 4in, 6in. Features: efficient drainage, helps prevent water standing, genuine SS options available, durable construction, suitable for bathrooms, kitchens, and commercial areas." },
+
+  { id:'basin-accessories', title:'Basin Accessories', text:
+    "Complete basin accessories required for bathroom and washroom installations. Bottle Traps: Stainless Steel (SS), Brass. Waste Couplings: Stainless Steel (SS), Brass. Other Accessories: Angle Valves, Other Basin Fittings. Features: SS and brass options, durable construction, leak-resistant connections, reliable performance, easy installation." },
+
+  { id:'water-filters', title:'Water Filters', text:
+    "Aqua Fine water filters are available for household water purification requirements. Brand available: Aqua Fine. Types: Single Filter, Double Filter, Triple Filter. Features: helps improve water quality, multiple filtration options, helps remove impurities, easy maintenance, reliable filtration performance." },
+
+  { id:'gas-pipes', title:'Gas Pipes', text:
+    "Quality gas pipes suitable for safe gas supply installations in residential and commercial applications. Brands available: Dura Flow, Korean. Product: Gas Pipes. Sizes: standard gas pipe sizes available. Features: durable construction, good flexibility and strength, reliable gas supply solution, suitable for household and commercial use, long service life." },
+
+  { id:'adhesives', title:'Adhesives & Silicones', text:
+    "Adhesives and silicone products used for plumbing, sanitary fittings, construction, and repair applications. Brands available: Gimsa, Samad Bond, Magic. Products: Elfi Silicone, Silicone Sealants, Adhesives, Bonding Solutions. Features: strong bonding capability, water-resistant sealing, suitable for multiple surfaces, easy application, long-lasting performance." },
+
+  { id:'pprc-heaters', title:'PPRC Heaters', text:
+    "PPRC heaters are used for heat fusion of PPRC pipes and fittings to create strong and leak-resistant joints. Brands available: TurkPlast, Dura Flow. Product Type: Electric PPRC Heater. Features: reliable heating performance, suitable for professional plumbing work, durable construction, easy operation, helps create strong fused joints." },
+
+  { id:'curtain-pipes', title:'Curtain Pipes & Brackets', text:
+    "Material available: Stainless Steel (SS). Products: SS Curtain Pipes, SS Curtain Brackets. Size available: 1in. Features: rust-resistant, strong and durable, modern appearance, easy installation, suitable for homes and commercial spaces." },
+
+  { id:'door-locks', title:'Door Locks', text:
+    "Main door and handle locks for residential and commercial security requirements. Main Door Lock Brands: Fara, Fale, Starlife. Handle Lock Brands: MKF, SHS. Replacement Policy: replaceable before installation, no guarantee after installation. Features: strong construction, reliable locking mechanism, smooth operation, suitable for different door types." },
+
+  { id:'thermopol', title:'Thermopol Sheets', text:
+    "Product available: Thermopol Sheets. Sizes: 1in, 1.5in, 2in, 3in, 4in. Warranty: No Warranty. Features: lightweight insulation material, helps reduce heat transfer, easy cutting and installation, suitable for construction applications." },
+
+  { id:'folding-ladders', title:'Folding Ladders', text:
+    "Folding ladders are suitable for household, maintenance, construction, and commercial use. Product Categories: Normal Folding Ladder, Single Angle Folding Ladder, Double Angle Folding Ladder. Sizes: 4, 5, 6, 7, 8, 9, 10, 11, 12 Feet. Features: foldable design, easy storage, strong construction, available in multiple heights, easy to carry and use." },
+
+  { id:'threads-tapes', title:'Threads & Tapes', text:
+    "Threads and tapes are essential plumbing materials used for sealing pipe joints and preventing leakage. Products: Teflon Tape, Plumbing Threads. Features: helps prevent leakage, creates secure pipe connections, easy application, suitable for plumbing and sanitary fittings." },
+];
+
+// ---------- CONFIG ----------
+const EMBED_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent';
+const GEN_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+const SIM_THRESHOLD = 0.55; // below this, treat as "not found in knowledge base"
+const TOP_K = 3;
+
+let kbVectors = null; // [{id, title, text, vector}]
+let apiKey = '';
+let uploadedDocs = [];   // [{ filename, chunkCount }]
+let uploadedChunks = []; // [{ id, title, text }] — from user-uploaded PDFs
+
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ---------- INGESTION: PDF upload -> text extraction -> chunking ----------
+function getAllKB(){
+  return KB.concat(uploadedChunks);
+}
+
+function refreshKbList(){
+  const all = getAllKB();
+  document.getElementById('kb-summary').textContent = 'View knowledge base sections (' + all.length + ')';
+  document.getElementById('kb-list').innerHTML = all.map(function(k){ return '<div class="kb-item">' + escapeHtml(k.title) + '</div>'; }).join('');
+}
+
+function renderDocList(){
+  const el = document.getElementById('doc-list');
+  el.innerHTML = uploadedDocs.map(function(d, i){
+    return '<div class="doc-item"><span>' + escapeHtml(d.filename) + '</span>' +
+      '<span><span class="chunks">' + d.chunkCount + ' chunks</span>' +
+      '<span class="remove-doc" onclick="removeDoc(' + i + ')">remove</span></span></div>';
+  }).join('');
+}
+
+function removeDoc(index){
+  const doc = uploadedDocs[index];
+  if(!doc) return;
+  uploadedChunks = uploadedChunks.filter(function(c){ return c.docId !== doc.docId; });
+  uploadedDocs.splice(index, 1);
+  renderDocList();
+  invalidateKbCache('Removed "' + doc.filename + '" — re-initialize to update the knowledge base.');
+}
+
+function invalidateKbCache(message){
+  kbVectors = null;
+  localStorage.removeItem('rag_kb_vectors_v1');
+  document.getElementById('question-input').disabled = true;
+  document.getElementById('ask-btn').disabled = true;
+  setStatus('', message || 'Knowledge base changed — re-initialize to include your changes');
+  refreshKbList();
+}
+
+// Extract raw text from a PDF file using pdf.js, page by page.
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let fullText = '';
+  for(let p = 1; p <= pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const strings = content.items.map(function(it){ return it.str; });
+    fullText += strings.join(' ') + '\n\n';
+  }
+  return fullText;
+}
+
+// Split text into overlapping chunks, preferring to break on sentence boundaries
+// so each chunk retains enough context to be independently retrievable.
+function chunkText(text, chunkSize, overlap){
+  chunkSize = chunkSize || 800;
+  overlap = overlap || 120;
+  const clean = text.replace(/\s+/g, ' ').trim();
+  const chunks = [];
+  let start = 0;
+  while(start < clean.length){
+    let end = Math.min(start + chunkSize, clean.length);
+    if(end < clean.length){
+      const lastPeriod = clean.lastIndexOf('. ', end);
+      if(lastPeriod > start + chunkSize * 0.5) end = lastPeriod + 1;
+    }
+    const piece = clean.slice(start, end).trim();
+    if(piece.length > 20) chunks.push(piece);
+    if(end >= clean.length) break;
+    start = Math.max(end - overlap, start + 1);
+  }
+  return chunks;
+}
+
+async function handlePdfFiles(fileList){
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  const statusEl = document.getElementById('upload-status');
+
+  for(const file of files){
+    if(file.type !== 'application/pdf'){
+      showToast(file.name + ' is not a PDF, skipped', true);
+      continue;
+    }
+    statusEl.textContent = 'Extracting text from ' + file.name + '...';
+    try{
+      const text = await extractPdfText(file);
+      const pieces = chunkText(text);
+      const docId = file.name + '-' + Date.now();
+      pieces.forEach(function(piece, i){
+        uploadedChunks.push({
+          id: 'upload-' + docId + '-' + i,
+          docId: docId,
+          title: file.name + ' — part ' + (i + 1),
+          text: piece
+        });
+      });
+      uploadedDocs.push({ docId: docId, filename: file.name, chunkCount: pieces.length });
+    }catch(err){
+      console.error(err);
+      showToast('Could not read ' + file.name + ': ' + err.message, true);
+    }
+  }
+
+  renderDocList();
+  invalidateKbCache('New documents added — click Initialize Knowledge Base to include them.');
+  statusEl.textContent = uploadedDocs.length + ' document(s) loaded, ' + uploadedChunks.length + ' chunks ready to embed.';
+}
+
+// ---------- INIT ----------
+window.addEventListener('DOMContentLoaded', () => {
+  refreshKbList();
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('pdf-file-input');
+  fileInput.addEventListener('change', function(e){ handlePdfFiles(e.target.files); fileInput.value = ''; });
+  ['dragover','dragenter'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', function(e){
+    e.preventDefault();
+    if(e.dataTransfer && e.dataTransfer.files) handlePdfFiles(e.dataTransfer.files);
+  });
+
+  const savedKey = localStorage.getItem('rag_gemini_key');
+  if (savedKey) {
+    document.getElementById('api-key').value = savedKey;
+    apiKey = savedKey;
+  }
+
+  const cachedVectors = localStorage.getItem('rag_kb_vectors_v1');
+  if (cachedVectors) {
+    try {
+      kbVectors = JSON.parse(cachedVectors);
+      setStatus('ready', 'Knowledge base ready (' + kbVectors.length + ' sections, cached)');
+      enableChat();
+    } catch(e) { /* ignore corrupt cache */ }
+  }
+});
+
+function saveKey(){
+  const val = document.getElementById('api-key').value.trim();
+  if(!val){ showToast('Enter an API key first', true); return; }
+  apiKey = val;
+  localStorage.setItem('rag_gemini_key', val);
+  showToast('API key saved');
+}
+
+function setStatus(state, text){
+  const dot = document.getElementById('status-dot');
+  dot.className = 'dot ' + (state || '');
+  document.getElementById('status-text').textContent = text;
+}
+
+// ---------- EMBEDDING ----------
+async function embedText(text){
+  const res = await fetch(EMBED_URL + '?key=' + apiKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'models/gemini-embedding-001',
+      content: { parts: [{ text: text }] }
+    })
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error('Embedding API error (' + res.status + '): ' + errText);
+  }
+  const data = await res.json();
+  return data.embedding.values;
+}
+
+function cosineSimilarity(a, b){
+  let dot = 0, na = 0, nb = 0;
+  for(let i=0;i<a.length;i++){
+    dot += a[i]*b[i];
+    na += a[i]*a[i];
+    nb += b[i]*b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+async function buildKnowledgeBase(){
+  if(!apiKey){ showToast('Save your Gemini API key first', true); return; }
+  const btn = document.getElementById('init-btn');
+  btn.disabled = true;
+  setStatus('busy', 'Embedding knowledge base...');
+  document.getElementById('progress-bar').classList.add('show');
+
+  const allChunks = getAllKB();
+  const vectors = [];
+  try{
+    for(let i=0;i<allChunks.length;i++){
+      const chunk = allChunks[i];
+      const vector = await embedText(chunk.title + '. ' + chunk.text);
+      vectors.push({ id: chunk.id, title: chunk.title, text: chunk.text, vector: vector });
+      const pct = Math.round(((i+1)/allChunks.length)*100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      setStatus('busy', 'Embedding... ' + (i+1) + '/' + allChunks.length);
+    }
+    kbVectors = vectors;
+    localStorage.setItem('rag_kb_vectors_v1', JSON.stringify(vectors));
+    setStatus('ready', 'Knowledge base ready (' + vectors.length + ' sections)');
+    enableChat();
+    showToast('Knowledge base built successfully');
+  }catch(err){
+    console.error(err);
+    setStatus('', 'Initialization failed');
+    showToast('Failed: ' + err.message, true);
+    document.getElementById('kb-summary').insertAdjacentHTML('afterend', '<div style="color:#b3651b;font-family:\'IBM Plex Mono\',monospace;font-size:11px;margin-top:8px;">' + escapeHtml(err.message) + '</div>');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function enableChat(){
+  document.getElementById('question-input').disabled = false;
+  document.getElementById('ask-btn').disabled = false;
+}
+
+// ---------- RETRIEVAL + GENERATION ----------
+async function retrieveTopChunks(question){
+  const qVector = await embedText(question);
+  const scored = kbVectors.map(function(c){ return Object.assign({}, c, { score: cosineSimilarity(qVector, c.vector) }); });
+  scored.sort(function(a,b){ return b.score - a.score; });
+  return scored.slice(0, TOP_K);
+}
+
+async function generateAnswer(question, topChunks){
+  const contextBlock = topChunks.map(function(c,i){ return '[Source ' + (i+1) + ': ' + c.title + ']\n' + c.text; }).join('\n\n');
+  const prompt = "You are the knowledge assistant for Akbar & Sons Sanitary Store. Answer the customer's question using ONLY the information in the context below. Do not invent facts, brands, sizes, or prices that are not in the context. If the context does not contain the answer, say clearly that this isn't in the store's catalogue and suggest they contact the store directly. Keep the answer concise and helpful, in plain conversational text (no markdown headers).\n\nCONTEXT:\n" + contextBlock + "\n\nCUSTOMER QUESTION:\n" + question;
+
+  const res = await fetch(GEN_URL + '?key=' + apiKey, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }]
+    })
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error('Generation API error (' + res.status + '): ' + errText);
+  }
+  const data = await res.json();
+  return data.candidates[0].content.parts[0].text.trim();
+}
+
+async function askQuestion(){
+  const input = document.getElementById('question-input');
+  const question = input.value.trim();
+  if(!question) return;
+  if(!kbVectors){ showToast('Initialize the knowledge base first', true); return; }
+
+  addMessage('user', question);
+  input.value = '';
+  const askBtn = document.getElementById('ask-btn');
+  askBtn.disabled = true;
+  input.disabled = true;
+
+  const loadingId = addMessage('bot', 'Searching the catalogue...', [], true);
+
+  try{
+    const topChunks = await retrieveTopChunks(question);
+    const bestScore = (topChunks[0] && topChunks[0].score) || 0;
+
+    if(bestScore < SIM_THRESHOLD){
+      removeMessage(loadingId);
+      addMessage('bot', "I couldn't find this in our product catalogue. For anything outside what's listed here, please contact the store directly at 0321-1306560 (call or WhatsApp) and our team will help you.", [], false, true);
+    } else {
+      const answer = await generateAnswer(question, topChunks);
+      removeMessage(loadingId);
+      addMessage('bot', answer, topChunks.map(function(c){ return {title:c.title, score:c.score}; }));
+    }
+  }catch(err){
+    console.error(err);
+    removeMessage(loadingId);
+    addMessage('bot', "Something went wrong reaching the AI service. Please check your API key and try again.", [], false, true);
+  }finally{
+    askBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+function quickAsk(text){
+  document.getElementById('question-input').value = text;
+  askQuestion();
+}
+
+let msgCounter = 0;
+function addMessage(role, text, sources, isLoading, isFallback){
+  const win = document.getElementById('chat-window');
+  const emptyState = win.querySelector('.empty-chat');
+  if(emptyState) emptyState.remove();
+
+  const id = 'msg-' + (msgCounter++);
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.id = id;
+
+  let sourcesHtml = '';
+  if(sources && sources.length){
+    sourcesHtml = '<div class="sources">' + sources.map(function(s){ return '<span class="source-tag">' + escapeHtml(s.title) + ' (' + Math.round(s.score*100) + '%)</span>'; }).join('') + '</div>';
+  }
+
+  div.innerHTML = '<div class="bubble' + (isFallback ? ' fallback' : '') + '">' + escapeHtml(text) + '</div>' + sourcesHtml;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+  return id;
+}
+
+function removeMessage(id){
+  const el = document.getElementById(id);
+  if(el) el.remove();
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+document.getElementById('question-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') askQuestion();
+});
+</script>
+
+</body>
+</html>
