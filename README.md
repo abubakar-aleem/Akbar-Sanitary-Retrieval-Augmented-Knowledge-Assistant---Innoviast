@@ -112,6 +112,25 @@ Answer grounded in retrieved chunks + source citations (with match %)
 
 ---
 
+## Screenshots
+
+**1.png — Landing Page**  
+Shows the app header (Navy & Gold theme), three main sections: Connect (API key entry), Add Documents (PDF upload), and Build Knowledge Base (initialization). Status indicator shows knowledge base ready with 27 sections.
+
+**2.png — Store Information Query**  
+Query: "What are your store hours and where are you located?"  
+Answer retrieved from Store Information section with 58% confidence. Shows: 9 AM–9 PM hours, Main Defence Ghazi Road address, Jamia Masjid Siddiqia, Lahore.
+
+**3.png — Product Comparison**  
+Query: "What's the difference between UPVC pipes and PPRC pipes?"  
+System retrieves and compares two separate catalogue sections. Answer: UPVC for sewage (white), PPRC for hot/cold water (green). Sources: PPRC Pipes & Fittings (71%), UPVC Pipes & Fittings (68%).
+
+**4.png — Water Tanks & Fallback Example**  
+Top: Water tank sizes query with detailed answer (150–1200 Gallon capacities, Suntuff 10yr warranty, Dura Flow 5yr).  
+Bottom: Fallback handling — query "Do you sell electrical wire?" triggers fallback message: "We do not have information about electrical wire or cables in our catalogue. Please contact the store directly." No hallucination, clear refusal.
+
+---
+
 ## Example Questions & Answers
 
 **Q: Which brands sell PPRC pipes?**  
@@ -232,12 +251,11 @@ Deployed live on GitHub Pages:
 ├── EVALUATION_SHEET.pdf                # Test results (5/5 pass)
 ├── Akbar_and_Sons_Catalogue.pdf        # Sample knowledge base document
 ├── architecture-diagram.png            # RAG pipeline visual
-└── ss/                                 # Screenshots (optional)
-    ├── 1.png - Landing page
-    ├── 2.png - Initialize KB
-    ├── 3.png - Question asked
-    ├── 4.png - Answer with sources
-    └── 5.png - Fallback example
+└── ss/                                 # Screenshots
+    ├── 1.png - Landing page (header + Connect + Add Documents + Build KB sections)
+    ├── 2.png - Store hours & location query with sources
+    ├── 3.png - UPVC vs PPRC pipes comparison result
+    └── 4.png - Water tank sizes + fallback example (electrical wire)
 ```
 
 ---
@@ -266,6 +284,8 @@ If you'd like to:
 ## License
 
 Educational project, MIT License. Free to use, modify, distribute.
+
+---
 
 ## Author
 
